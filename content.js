@@ -595,7 +595,7 @@
         <div class="title">${state.currentView === 'fetch' ? '⚡' : state.currentView === 'history' ? '🕘' : '⚙️'} ${renderHeaderTitle()}</div>
         <div class="actions">
           ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-primary">NEW</button>` : ''}
-          <button id="ctx-collapse" title="${state.isCollapsed ? 'Expand' : 'Collapse'}" class="header-btn">${state.isCollapsed ? '⟩' : '⟨'}</button>
+          ${state.currentView !== 'fetch' ? `<button id="ctx-collapse" title="${state.isCollapsed ? 'Expand' : 'Collapse'}" class="header-btn">${state.isCollapsed ? '⟩' : '⟨'}</button>` : ''}
           <button id="ctx-fullscreen" title="Toggle fullscreen" class="header-btn">${state.isFullscreen ? '⤢' : '⤡'}</button>
           <button id="ctx-close" title="Close" class="header-btn">${icon('x')}</button>
         </div>
