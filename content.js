@@ -157,8 +157,9 @@
   const submitPrompt = async () => {
     if (!state.originalPrompt.trim()) { state.error = "Please enter a prompt"; render(); return; }
     if (!ensureConfigured()) { render(); return; }
+    if (!state.selectedSchemas.length) { state.error = "Please select at least one context"; render(); return; }
 
-    state.loading = true; state.error = null; render();
+    state.loading = true; state.error = null; state.currentPrompt = { status: 'pending' }; render();
     try {
       const payload = { prompt: state.originalPrompt.trim() };
       if (state.selectedSchemas.length) payload.schemaIds = state.selectedSchemas;
@@ -174,9 +175,12 @@
         throw new Error(err.error || "Failed to submit prompt");
       }
       const data = await res.json();
+      // Ensure immediate status visibility with prompt id
+      state.currentPrompt = { id: data.prompt_id, status: 'pending' }; render();
       pollPromptStatus(data.prompt_id);
     } catch (e) {
       state.error = e instanceof Error ? e.message : "Failed to submit prompt";
+      state.currentPrompt = null;
       state.loading = false; render();
     }
   };
@@ -431,7 +435,7 @@
               <div class="grow" id="ctx-selected-tags">
                 ${selectedSchemas.map(s => `<span class="tag ${getContextTypeColor(s.type)}">${escapeHtml(s.name)} <button data-remove-schema="${s.id}" class="btn-pill" style="padding:0 6px;">x</button></span>`).join(' ')}
               </div>
-              <button id="ctx-submit" class="btn btn-send" ${state.loading || !state.originalPrompt.trim() ? 'disabled' : ''} title="Send">${icon('send')}</button>
+              <button id="ctx-submit" class="btn btn-send" ${state.loading || !state.originalPrompt.trim() || !state.selectedSchemas.length ? 'disabled' : ''} title="Send">${icon('send')}</button>
             </div>
           </div>
         </div>
@@ -633,7 +637,7 @@
       state.originalPrompt = e.target.value;
       resizeTextarea(e.target);
       const submitBtn = byId('ctx-submit', false);
-      if (submitBtn) submitBtn.disabled = state.loading || !state.originalPrompt.trim();
+      if (submitBtn) submitBtn.disabled = state.loading || !state.originalPrompt.trim() || !state.selectedSchemas.length;
     });
 
     byId('ctx-toggle-context', false)?.addEventListener('click', () => {
