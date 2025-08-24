@@ -629,7 +629,12 @@
 
     // Fetch view events
     const promptEl = byId('ctx-original-prompt', false);
-    if (promptEl) promptEl.addEventListener('input', (e) => { state.originalPrompt = e.target.value; resizeTextarea(e.target); });
+    if (promptEl) promptEl.addEventListener('input', (e) => {
+      state.originalPrompt = e.target.value;
+      resizeTextarea(e.target);
+      const submitBtn = byId('ctx-submit', false);
+      if (submitBtn) submitBtn.disabled = state.loading || !state.originalPrompt.trim();
+    });
 
     byId('ctx-toggle-context', false)?.addEventListener('click', () => {
       state.showContextSelection = !state.showContextSelection; render();
