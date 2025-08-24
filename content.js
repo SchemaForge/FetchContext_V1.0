@@ -81,7 +81,14 @@
     return `\n\nADDITIONAL CONTEXT: ${parts.join(' | ')}`;
   };
 
-  const generateQAContext = () => "";
+  const generateQAContext = () => {
+    if (!Array.isArray(state.submittedAnswers) || state.submittedAnswers.length === 0) return "";
+    const qa = state.submittedAnswers
+      .filter(qa => qa && typeof qa.answer === 'string' && qa.answer.trim() !== '')
+      .map(qa => `Q: ${qa.question}\nA: ${qa.answer}`)
+      .join('\n\n');
+    return qa ? `\n\nQ&A CONTEXT:\n${qa}` : "";
+  };
 
   const generateFileContext = () => {
     if (!state.selectedFileExtracts.length) return "";
@@ -201,6 +208,10 @@
 
         if (prompt.status === "completed") {
           state.enhancedPrompt = prompt.enriched_prompt || "";
+          if (Array.isArray(prompt.questions_answers) && prompt.questions_answers.length) {
+            state.questions = prompt.questions_answers;
+            state.showQuestions = true;
+          }
           state.loading = false; render();
         } else if (attempts < maxAttempts) {
           attempts++;
@@ -217,7 +228,31 @@
     poll();
   };
 
-  const submitAnswers = async () => {};
+  const submitAnswers = async () => {
+    if (!state.currentPrompt || !state.currentPrompt.id) return;
+    state.submittingAnswers = true; render();
+    try {
+      const res = await fetch(`${apiUrl(`functions/v1/respond-prompt/${state.currentPrompt.id}`)}?api_key=${encodeURIComponent(state.apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(state.questions || []),
+        mode: "cors"
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to submit answers");
+      }
+      state.showQuestions = false;
+      state.submittedAnswers = Array.isArray(state.questions) ? [...state.questions] : [];
+      state.error = null;
+      // Re-poll for updated enhanced prompt
+      pollPromptStatus(state.currentPrompt.id);
+    } catch (e) {
+      state.error = e instanceof Error ? e.message : "Failed to submit answers";
+    } finally {
+      state.submittingAnswers = false; render();
+    }
+  };
 
 
   const loadPromptHistory = async () => {
@@ -453,6 +488,30 @@
           </div>` : ''}
 
 
+        ${Array.isArray(state.questions) && state.questions.length ? `
+          <div class="box" style="margin-top:12px;border-color:#fed7aa;">
+            <button id="ctx-qa-toggle" class="box-body row" style="width:100%;justify-content:space-between;background:#fffbeb;">
+              <div class="row" style="gap:6px;">
+                <span>💬</span>
+                <span class="muted" style="color:#9a3412;">${state.submittedAnswers && state.submittedAnswers.length ? 'Update Answers' : 'Additional Questions'} (${state.questions.length})</span>
+              </div>
+              <span>${state.showQuestions ? '▴' : '▾'}</span>
+            </button>
+            ${state.showQuestions ? `
+              <div class="box-body" style="padding-top:6px;">
+                ${state.questions.map((q, idx) => `
+                  <div style="margin-bottom:8px;">
+                    <label class="muted" style="display:block;margin-bottom:4px;color:#111827;">${escapeHtml(q.question)}</label>
+                    <textarea class="input" data-qa-index="${idx}" rows="2" placeholder="${state.submittedAnswers && state.submittedAnswers.length ? 'Update your answer...' : 'Enter your answer...'}">${escapeHtml(q.answer || '')}</textarea>
+                  </div>`).join('')}
+                <div class="row" style="gap:8px;">
+                  <button id="ctx-qa-submit" class="btn btn-primary grow" ${state.submittingAnswers ? 'disabled' : ''}>${state.submittingAnswers ? 'Submitting...' : (state.submittedAnswers && state.submittedAnswers.length ? 'Update' : 'Submit')}</button>
+                  <button id="ctx-qa-skip" class="btn btn-outline">${state.submittedAnswers && state.submittedAnswers.length ? 'Cancel' : 'Skip'}</button>
+                </div>
+              </div>` : ''}
+          </div>` : ''}
+
+
         ${state.error ? `<div class="box" style="background:#fef2f2;border-color:#fecaca;margin-top:12px;"><div class="box-body" style="color:#991b1b;font-size:12px;">${state.error}</div></div>`: ""}
       </div>`;
   };
@@ -508,7 +567,7 @@
 
   const renderFooter = () => {
     if (!state.isAuthenticated || !state.enhancedPrompt || state.currentView !== "fetch") return "";
-    const composite = state.enhancedPrompt + generateAdditionalContext() + generateFileContext();
+    const composite = state.enhancedPrompt + generateAdditionalContext() + generateFileContext() + generateQAContext();
     return `
       <div class="box" style="margin:0 12px 12px 12px;background:#f9fafb;border-top:1px solid #e5e7eb;">
         <div class="box-body row" style="justify-content:space-between;padding-bottom:8px;">
@@ -630,6 +689,13 @@
       state.currentPrompt = prompt;
       state.enhancedPrompt = prompt.enriched_prompt || "";
       state.selectedSchemas = Array.isArray(prompt.schemas_used) ? prompt.schemas_used : [];
+      if (Array.isArray(prompt.questions_answers) && prompt.questions_answers.length) {
+        state.questions = prompt.questions_answers;
+        state.submittedAnswers = prompt.questions_answers;
+      } else {
+        state.questions = [];
+        state.submittedAnswers = [];
+      }
       if (prompt.context && Array.isArray(prompt.context)) {
           state.fileContexts = prompt.context.map((ctx, index) => ({ id: `${prompt.id}_${index}`, source: ctx.source, content: ctx.content, selected: false }));
         } else {
@@ -666,8 +732,22 @@
 
     // Footer copy
     byId('ctx-copy', false)?.addEventListener('click', () => {
-      const text = state.enhancedPrompt + generateAdditionalContext() + generateFileContext();
+      const text = state.enhancedPrompt + generateAdditionalContext() + generateFileContext() + generateQAContext();
       copyToClipboard(text);
+    });
+
+    // Q&A events
+    byId('ctx-qa-toggle', false)?.addEventListener('click', () => { state.showQuestions = !state.showQuestions; render(); });
+    byId('ctx-qa-submit', false)?.addEventListener('click', submitAnswers);
+    byId('ctx-qa-skip', false)?.addEventListener('click', () => { state.showQuestions = false; render(); });
+    container.querySelectorAll('[data-qa-index]')?.forEach(ta => {
+      ta.addEventListener('input', (e) => {
+        const idxStr = e.currentTarget.getAttribute('data-qa-index');
+        const idx = Number(idxStr);
+        if (!isNaN(idx) && state.questions[idx]) {
+          state.questions[idx].answer = e.target.value;
+        }
+      });
     });
 
     // Reopen floating button
@@ -695,6 +775,7 @@
     state.fileContexts = [];
     state.selectedFileExtracts = [];
     state.showFileContext = false;
+    state.showQuestions = false;
   };
 
   const resizeTextarea = (ta) => {
