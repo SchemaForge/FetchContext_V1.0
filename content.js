@@ -5,6 +5,7 @@
   const state = {
     isOpen: true,
     isFullscreen: false,
+    isCollapsed: false,
     isAuthenticated: false,
     currentView: "fetch", // fetch | history | settings
     apiKey: "",
@@ -307,6 +308,8 @@
       :host, * { box-sizing: border-box; }
       .panel { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -2px 0 10px rgba(0,0,0,0.08); display: flex; z-index: 2147483647; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
       .panel.full { inset: 0; width: auto; border-left: none; }
+      .panel.collapsed { width: 48px; }
+      .panel.collapsed .main { display: none; }
       .ribbon { width: 48px; background: #f9fafb; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; padding: 8px; }
       .ribbon button { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: #4b5563; cursor: pointer; margin-bottom: 6px; }
       .ribbon button.active { background: #2563eb; color: #fff; }
@@ -314,8 +317,8 @@
       .main { flex: 1; display: flex; flex-direction: column; }
       .header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
       .header .title { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #111827; font-size: 13px; }
-      .header .actions button { border: none; background: transparent; color: #9ca3af; cursor: pointer; padding: 4px; }
-      .header .actions button:hover { color: #4b5563; }
+      .header .actions .header-btn { border: none; background: transparent; color: #9ca3af; cursor: pointer; padding: 4px; }
+      .header .actions .header-btn:hover { color: #4b5563; }
       .content { flex: 1; overflow: auto; }
       .section { padding: 12px; }
       .textarea { width: 100%; border: none; outline: none; resize: none; font-size: 13px; color: #111827; }
@@ -591,7 +594,8 @@
       <div class="header">
         <div class="title">${state.currentView === 'fetch' ? '⚡' : state.currentView === 'history' ? '🕘' : '⚙️'} ${renderHeaderTitle()}</div>
         <div class="actions">
-          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn-pill">NEW</button>` : ''}
+          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-primary">NEW</button>` : ''}
+          <button id="ctx-collapse" title="${state.isCollapsed ? 'Expand' : 'Collapse'}" class="header-btn">${state.isCollapsed ? '⟩' : '⟨'}</button>
           <button id="ctx-fullscreen" title="Toggle fullscreen" class="header-btn">${state.isFullscreen ? '⤢' : '⤡'}</button>
           <button id="ctx-close" title="Close" class="header-btn">${icon('x')}</button>
         </div>
@@ -607,12 +611,13 @@
 
     const ribbon = `
       <div class="ribbon">
+        <button id="ctx-collapse-toggle" title="${state.isCollapsed ? 'Expand' : 'Collapse'}">${state.isCollapsed ? '⟨' : '⟩'}</button>
         <button id="ctx-nav-fetch" class="${state.currentView === 'fetch' ? 'active' : ''}" title="Fetch">⚡</button>
         ${state.isAuthenticated ? `<button id="ctx-nav-history" class="${state.currentView === 'history' ? 'active' : ''}" title="History">🕘</button>` : ''}
         <button id="ctx-nav-settings" class="${state.currentView === 'settings' ? 'active' : ''}" title="Settings">⚙️</button>
       </div>`;
 
-    const wrapperCls = `panel ${state.isFullscreen ? 'full' : ''}`;
+    const wrapperCls = `panel ${state.isFullscreen ? 'full' : ''} ${state.isCollapsed ? 'collapsed' : ''}`.trim();
     const reopenBtn = state.isOpen ? '' : `<button id="ctx-reopen" class="reopen-btn" title="Open">⚡</button>`;
     container.innerHTML = `<div class="${wrapperCls}"${state.isOpen ? '' : ' style="display:none;"'}>${ribbon}<div class="main">${header}${status}${content}${footer}</div></div>${reopenBtn}`;
 
@@ -622,14 +627,16 @@
   // Event binding
   const bindEvents = () => {
     // Header
-    byId('ctx-close', false)?.addEventListener('click', () => { state.isOpen = false; render(); });
-    byId('ctx-fullscreen', false)?.addEventListener('click', () => { state.isFullscreen = !state.isFullscreen; render(); });
+    byId('ctx-close', false)?.addEventListener('click', () => { state.isCollapsed = true; render(); });
+    byId('ctx-fullscreen', false)?.addEventListener('click', () => { state.isFullscreen = !state.isFullscreen; if (state.isFullscreen) state.isCollapsed = false; render(); });
+    byId('ctx-collapse', false)?.addEventListener('click', () => { state.isCollapsed = !state.isCollapsed; render(); });
     byId('ctx-new', false)?.addEventListener('click', () => { resetPrompt(); render(); });
 
     // Nav
-    byId('ctx-nav-fetch', false)?.addEventListener('click', () => { state.currentView = 'fetch'; render(); });
-    byId('ctx-nav-history', false)?.addEventListener('click', () => { state.currentView = 'history'; if (!state.historyLoading) loadPromptHistory(); });
-    byId('ctx-nav-settings', false)?.addEventListener('click', () => { state.currentView = 'settings'; render(); });
+    byId('ctx-nav-fetch', false)?.addEventListener('click', () => { if (state.isCollapsed) state.isCollapsed = false; state.currentView = 'fetch'; render(); });
+    byId('ctx-nav-history', false)?.addEventListener('click', () => { if (state.isCollapsed) state.isCollapsed = false; state.currentView = 'history'; if (!state.historyLoading) loadPromptHistory(); });
+    byId('ctx-nav-settings', false)?.addEventListener('click', () => { if (state.isCollapsed) state.isCollapsed = false; state.currentView = 'settings'; render(); });
+    byId('ctx-collapse-toggle', false)?.addEventListener('click', () => { state.isCollapsed = !state.isCollapsed; render(); });
 
     // Fetch view events
     const promptEl = byId('ctx-original-prompt', false);
