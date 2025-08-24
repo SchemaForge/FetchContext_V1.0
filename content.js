@@ -333,6 +333,9 @@
       .btn-pill { padding: 4px 8px; background: #f3f4f6; color: #374151; border-radius: 8px; }
       .btn-primary { padding: 6px 10px; background: #2563eb; color: #fff; border-radius: 8px; }
       .btn-outline { padding: 6px 10px; background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; }
+      .btn-new { padding: 6px 10px; background: #f3f4f6; color: #374151; border-radius: 8px; }
+      .btn-new:hover { background: #e5e7eb; }
+      .btn-new:active { background: #d1d5db; }
       .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 11px; border: 1px solid #e5e7eb; }
       .badge-blue { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
       .badge-green { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
@@ -449,14 +452,14 @@
               <div style="font-weight:600;color:#111827;font-size:13px;">Select Contexts</div>
               <button id="ctx-close-context" class="header-btn" title="Close">${icon('x')}</button>
             </div>
-            <div class="box-body">
+            <div class="box-body" style="border-bottom:1px solid #e5e7eb;">
               <input id="ctx-context-search" class="input" placeholder="Search contexts..." value="${escapeAttr(state.contextSearchTerm)}" />
             </div>
-            <div class="box-body" style="max-height:192px;overflow:auto;">
+            <div class="box-body" style="max-height:192px;overflow:auto;padding:0;">
               ${state.loading && state.schemas.length === 0 ? `<div class="muted" style="text-align:center;">Loading contexts...</div>` :
                 (filteredSchemas.length === 0 ? `<div class="muted" style="text-align:center;">${state.contextSearchTerm ? 'No contexts match your search' : 'No contexts available'}</div>` :
                   filteredSchemas.map(s => `
-                    <button class="row" data-add-schema="${s.id}" style="width:100%;text-align:left;padding:8px;border-bottom:1px solid #f3f4f6;background:#fff;">
+                    <button class="row" data-add-schema="${s.id}" style="width:100%;text-align:left;padding:12px 12px;border:none;outline:none;border-bottom:1px solid #e5e7eb;background:#fff;">
                       <div class="grow">
                         <div class="row" style="gap:8px;">
                           <div style="font-weight:600;color:#111827;font-size:13px;">${escapeHtml(s.name)}</div>
@@ -594,7 +597,7 @@
       <div class="header">
         <div class="title">${state.currentView === 'fetch' ? '⚡' : state.currentView === 'history' ? '🕘' : '⚙️'} ${renderHeaderTitle()}</div>
         <div class="actions">
-          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-primary">+ NEW</button>` : ''}
+          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-new">+ NEW</button>` : ''}
           ${state.currentView !== 'fetch' ? `<button id="ctx-collapse" title="${state.isCollapsed ? 'Expand' : 'Collapse'}" class="header-btn">${state.isCollapsed ? '⟩' : '⟨'}</button>` : ''}
           <button id="ctx-fullscreen" title="Toggle fullscreen" class="header-btn">${state.isFullscreen ? '⤢' : '⤡'}</button>
           <button id="ctx-close" title="Close" class="header-btn">${icon('x')}</button>
