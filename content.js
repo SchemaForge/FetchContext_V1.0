@@ -317,8 +317,8 @@
       .main { flex: 1; display: flex; flex-direction: column; }
       .header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
       .header .title { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #111827; font-size: 13px; }
-      .header .actions .header-btn { border: none; background: transparent; color: #9ca3af; cursor: pointer; padding: 4px; }
-      .header .actions .header-btn:hover { color: #4b5563; }
+      .header-btn { border: none; background: transparent; color: #9ca3af; cursor: pointer; padding: 4px; }
+      .header-btn:hover { color: #4b5563; }
       .content { flex: 1; overflow: auto; }
       .section { padding: 12px; }
       .textarea { width: 100%; border: none; outline: none; resize: none; font-size: 13px; color: #111827; }
@@ -447,7 +447,7 @@
           <div class="box" style="margin-top:12px;">
             <div class="box-header row" style="justify-content:space-between;">
               <div style="font-weight:600;color:#111827;font-size:13px;">Select Contexts</div>
-              <button id="ctx-close-context" class="header-btn">${icon('x')}</button>
+              <button id="ctx-close-context" class="header-btn" title="Close">${icon('x')}</button>
             </div>
             <div class="box-body">
               <input id="ctx-context-search" class="input" placeholder="Search contexts..." value="${escapeAttr(state.contextSearchTerm)}" />
@@ -594,7 +594,7 @@
       <div class="header">
         <div class="title">${state.currentView === 'fetch' ? '⚡' : state.currentView === 'history' ? '🕘' : '⚙️'} ${renderHeaderTitle()}</div>
         <div class="actions">
-          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-primary">NEW</button>` : ''}
+          ${state.isAuthenticated && state.currentView === 'fetch' ? `<button id="ctx-new" class="btn btn-primary">+ NEW</button>` : ''}
           ${state.currentView !== 'fetch' ? `<button id="ctx-collapse" title="${state.isCollapsed ? 'Expand' : 'Collapse'}" class="header-btn">${state.isCollapsed ? '⟩' : '⟨'}</button>` : ''}
           <button id="ctx-fullscreen" title="Toggle fullscreen" class="header-btn">${state.isFullscreen ? '⤢' : '⤡'}</button>
           <button id="ctx-close" title="Close" class="header-btn">${icon('x')}</button>
